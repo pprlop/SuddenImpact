@@ -234,6 +234,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
                 if (newItemDis < curItemDis)
                 {
                     closestGun = weapon;
+                    continue;
                 }
             }
         }
@@ -246,14 +247,15 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         {
             closestGun = PhotonView.Find(_viewID).GetComponent<TestWeapon>();
         }
+
         myEquippedGun = closestGun;
+        closestGun = null;
 
         myEquippedGun.transform.SetParent(weaponAttachPoint);
         myEquippedGun.transform.localPosition = Vector3.zero;
         myEquippedGun.transform.localRotation = Quaternion.identity;
 
         useGun = true;
-
         SwapWeapon(useGun);
 
     }
@@ -313,12 +315,16 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     private void DiePlayer()
     {
+        if(myEquippedGun  != null)
+        {
+            myEquippedGun.gameObject.SetActive(true);
+            myEquippedGun.transform.SetParent(null);
+            myEquippedGun = null;
+        }
         // 게임 메니저의 이벤트 버스 호출 필요
         // 인풋 메니저에게 콜백 필요
         DebugGameManager.Instance?.OnPlayerDied(this);
 
-        myEquippedGun.transform.SetParent(null);
-        myEquippedGun = null;
 
         this.gameObject.SetActive(false);
     }
@@ -331,6 +337,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     [PunRPC]
     private void StunRPC()
     {
+        if (!gameObject.activeSelf) return;
         StartCoroutine(StunCoroutine());
     }
 
