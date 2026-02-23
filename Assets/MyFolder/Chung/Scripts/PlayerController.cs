@@ -65,10 +65,22 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         myRigidbody.MovePosition(moveVector);
     }
 
-    public void RotatePlayer(float _moveAngle)
+    public void RotatePlayer(Vector3 _aimPos)
     {
-        Quaternion moveDir = Quaternion.Euler(0f, _moveAngle, 0f);
-        myRigidbody.rotation = moveDir;
+        // 1. 에임 위치를 받아 상대위치 계산
+        Vector3 lookPos = _aimPos - transform.position;
+
+       lookPos.y = 0; // 2. x , z 만 가지고 계산하면 y축의 회전만 사용
+
+        // 3. 방향이 0이 아닐 때만 회전 처리 (제자리에서 에러 방지)
+        if (lookPos.sqrMagnitude > 0.001f)
+        {
+            // 4. 방향을 Quaternion으로 변환
+            Quaternion targetRotation = Quaternion.LookRotation(lookPos);
+
+            // 5. 리지드바디를 통해 물리적으로 회전 
+            myRigidbody.MoveRotation(targetRotation);
+        }
     }
 
 
@@ -152,7 +164,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         Debug.Log("[PlayerController] Im end Sprinting");
     }
 
-    public void TryAttack(Vector3 _mousePos)
+    public void TryAttack(Vector3 _aimPos)
     {
 
         if (useGun)
