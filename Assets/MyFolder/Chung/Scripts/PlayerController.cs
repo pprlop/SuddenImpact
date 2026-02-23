@@ -34,6 +34,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         NotReady, Idel, Sprint, Rolling, Stunned, Dead
     }
     private PlayerState playerState;
+    public PlayerState GetPlayerState { get { return playerState; } }
 
     private void OnEnable()
     {
@@ -57,9 +58,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     #region 조작 로직
     public void MovePlayer(Vector3 _moveAxis)
     {
-        if (playerState == PlayerState.Rolling) return;
-        if (playerState == PlayerState.Stunned) return;
-        if (playerState == PlayerState.Dead) return;
+
 
         Vector3 moveVector = transform.position + ((_moveAxis * moveSpeed) * Time.deltaTime);
         myRigidbody.MovePosition(moveVector);
@@ -67,6 +66,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     public void RotatePlayer(Vector3 _aimPos)
     {
+
         // 1. 에임 위치를 받아 상대위치 계산
         Vector3 lookPos = _aimPos - transform.position;
 
@@ -250,10 +250,10 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
                 {
                     minSqrDistance = sqrDist;
                     tempClosest = nearbyItems[i]; 
-            }
+                }
             }
             closestGun = tempClosest;
-    }
+        }
         closestGun = null;
         curCheakClosestWeaponCoroutine = null;
     }
@@ -285,6 +285,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
             closestGun = PhotonView.Find(_viewID).GetComponent<TestWeapon>();
         }
 
+        DropWeapon();
 
         if (nearbyItems.Contains(myEquippedGun))
         {
@@ -294,6 +295,11 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         myEquippedGun = closestGun;
         closestGun = null;
 
+        if(photonView.IsMine)
+        {
+            myEquippedGun.photonView.RequestOwnership();
+        }
+
         myEquippedGun.transform.SetParent(weaponAttachPoint);
         myEquippedGun.transform.localPosition = Vector3.zero;
         myEquippedGun.transform.localRotation = Quaternion.identity;
@@ -301,6 +307,16 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         useGun = true;
         SwapWeapon(useGun);
 
+    }
+
+    private void DropWeapon()
+    {
+        if (myEquippedGun != null)
+        {
+            myEquippedGun.gameObject.SetActive(true);
+            myEquippedGun.transform.SetParent(null);
+            myEquippedGun = null;
+        }
     }
     #endregion
 
@@ -358,12 +374,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     private void DiePlayer()
     {
-        if(myEquippedGun  != null)
-        {
-            myEquippedGun.gameObject.SetActive(true);
-            myEquippedGun.transform.SetParent(null);
-            myEquippedGun = null;
-        }
+        DropWeapon();
         // 게임 메니저의 이벤트 버스 호출 필요
         // 인풋 메니저에게 콜백 필요
         DebugGameManager.Instance?.OnPlayerDied(this);
