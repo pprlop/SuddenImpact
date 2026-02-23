@@ -18,6 +18,12 @@ public class InputManager : MonoBehaviour
     private InputAction onRollAction;
     private InputAction onDropAction;
     private InputAction onFireAction;
+    private InputAction onSwapAction;
+
+    private Camera myMainCamera;
+    private Plane aimPlane;
+    private Vector3 worldAimPosition;
+    private float angle = 0f;
 
 
     private void Awake()
@@ -31,9 +37,12 @@ public class InputManager : MonoBehaviour
         onRollAction = myInputAction.FindAction("Roll");
         onDropAction = myInputAction.FindAction("Drop");
         onFireAction = myInputAction.FindAction("Fire");
+        onSwapAction = myInputAction.FindAction("Swap");
 
 
         myPlayerRegistry.OnPlayerRegistered += GetmyPlayer;
+        myMainCamera = Camera.main;
+
     }
 
     private void Update()
@@ -44,9 +53,10 @@ public class InputManager : MonoBehaviour
 
     private IEnumerator GetInputValue()
     {
-        while (player)
+        while (player != null)
         {
-            yield return null;
+            yield return new WaitForFixedUpdate();
+
             OnMove(onMoveAction.ReadValue<Vector2>());
             OnRotate(onMousePosAction.ReadValue<Vector2>());
         }
@@ -60,15 +70,19 @@ public class InputManager : MonoBehaviour
 
     private void OnRotate(Vector2 _mouseScreenPos)
     {
-        Vector2 screenCenter = new Vector2(Screen.width / 2f, Screen.height / 2f);
-        Vector2 direction = _mouseScreenPos - screenCenter;
-        float angle = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
-        player.RotatePlayer(angle);
+        Ray ray = myMainCamera.ScreenPointToRay(_mouseScreenPos);
+
+        if (aimPlane.Raycast(ray, out float enter))
+        {
+            worldAimPosition = ray.GetPoint(enter);
+        }
+
+        player.RotatePlayer(worldAimPosition);
     }
 
     private void OnFire(InputAction.CallbackContext ctx)
     {
-        player.Fire(onMousePosAction.ReadValue<Vector2>());
+        player.TryAttack(worldAimPosition);
     }
 
     private void SetPlayerAction()
@@ -77,6 +91,7 @@ public class InputManager : MonoBehaviour
         onSprintAction.canceled += player.SprintEnd;
         onRollAction.performed += player.TryRoll;
         onDropAction.performed += player.PickUpAndDrop;
+        onSwapAction.performed += player.TrySwapWeapon;
 
         onFireAction.performed += OnFire;
 
@@ -87,6 +102,7 @@ public class InputManager : MonoBehaviour
         player = _player;
         SetPlayerAction();
 
+        aimPlane = new Plane(Vector3.up, new Vector3(0, player.transform.position.y, 0));
 
         StartCoroutine(GetInputValue());
     }
