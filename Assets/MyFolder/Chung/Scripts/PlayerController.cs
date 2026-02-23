@@ -234,22 +234,48 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     private IEnumerator CheckClosestWeapon()
     {
-        while (nearbyItems.Count > 0)
+        while (nearbyItems.Count > 0)   // 트리거에 들어와 있는 아이템이 있으면
         {
-            yield return new WaitForSeconds(5f / 60f); // 5프레임마다 
+            yield return new WaitForSeconds(5f / 60f); // 5프레임 주기 
+            float minSqrDistance = float.MaxValue; 
+            TestWeapon tempClosest = null;
 
-            foreach (var weapon in nearbyItems)
+            for (int i = nearbyItems.Count - 1; i >= 0; i--) // 역순 순회로 안정성 확보 
             {
-                float newItemDis = Vector3.Distance(transform.position,weapon.transform.position);
-                float curItemDis = Vector3.Distance(transform.position,closestGun.transform.position);
+                if (nearbyItems[i] == null) { nearbyItems.RemoveAt(i); continue; }
+            
 
-                if (newItemDis < curItemDis)
+            float sqrDist = (transform.position - nearbyItems[i].transform.position).sqrMagnitude; 
+            if (sqrDist < minSqrDistance)
                 {
-                    closestGun = weapon;
-                }
+                    minSqrDistance = sqrDist;
+                    tempClosest = nearbyItems[i]; 
             }
-        }
+            }
+            closestGun = tempClosest;
     }
+        closestGun = null;
+        curCheakClosestWeaponCoroutine = null;
+    }
+
+    //private IEnumerator CheckClosestWeapon()
+    //{
+    //    while (nearbyItems.Count > 0)
+    //    {
+    //        yield return new WaitForSeconds(5f / 60f); // 5프레임마다 
+
+    //        foreach (var weapon in nearbyItems)
+    //        {
+    //            float newItemDis = Vector3.Distance(transform.position,weapon.transform.position);
+    //            float curItemDis = Vector3.Distance(transform.position,closestGun.transform.position);
+
+    //            if (newItemDis < curItemDis)
+    //            {
+    //                closestGun = weapon;
+    //            }
+    //        }
+    //    }
+    //}
 
     [PunRPC]
     public void PickUpItem(int _viewID)
@@ -257,6 +283,12 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         if(!photonView.IsMine)
         {
             closestGun = PhotonView.Find(_viewID).GetComponent<TestWeapon>();
+        }
+
+
+        if (nearbyItems.Contains(myEquippedGun))
+        {
+            nearbyItems.Remove(myEquippedGun);
         }
 
         myEquippedGun = closestGun;

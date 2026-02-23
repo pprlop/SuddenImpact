@@ -43,7 +43,6 @@ public class InputManager : MonoBehaviour
         myPlayerRegistry.OnPlayerRegistered += GetmyPlayer;
         myMainCamera = Camera.main;
 
-        aimPlane = new Plane(Vector3.up, new Vector3(0, player.transform.position.y, 0));
     }
 
     private void Update()
@@ -103,6 +102,7 @@ public class InputManager : MonoBehaviour
         player = _player;
         SetPlayerAction();
 
+        aimPlane = new Plane(Vector3.up, new Vector3(0, player.transform.position.y, 0));
 
         StartCoroutine(GetInputValue());
     }
