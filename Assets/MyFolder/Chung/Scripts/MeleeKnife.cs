@@ -46,7 +46,7 @@ public class MeleeKnife : Weapon
                 {
                     damage = this.damage,
                     attackerActorNumber = PhotonNetwork.LocalPlayer.ActorNumber,
-                    attackerTeam = OwnerTeam,
+                    attackerTeam = ownerTeam,
                     type = DamageType.Melee,
                     hitPoint = impactPoint,
                     hitNormal = direction.normalized,

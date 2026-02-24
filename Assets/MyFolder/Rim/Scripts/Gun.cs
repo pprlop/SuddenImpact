@@ -21,24 +21,24 @@ public abstract class Gun : Weapon
 
     // 발사
     // PlayerController에서 마우스 방향 벡터 넘겨줌
-    public override void Attack(Vector3 direction)
-    {
-        if (!photonView.IsMine) return;
-        if (IsAmmoEmpty()) return;
-        if (Time.time - lastFireTime < 1f / fireRate) return;
+    //public override void Attack(Vector3 direction)
+    //{
+    //    if (!photonView.IsMine) return;
+    //    if (IsAmmoEmpty()) return;
+    //    if (Time.time - lastFireTime < 1f / fireRate) return;
 
-        lastFireTime = Time.time;
-        FireBullet(direction);
-        curAmmo--;
+    //    lastFireTime = Time.time;
+    //    FireBullet(direction);
+    //    curAmmo--;
 
-        Debug.Log($"[총] 남은 탄: {curAmmo}/{maxAmmo}");
-    }
+    //    Debug.Log($"[총] 남은 탄: {curAmmo}/{maxAmmo}");
+    //}
 
     // 총알 스폰
     // 샷건처럼 동시다나가는 Gun 하위 클래스에서 override
     protected virtual void FireBullet(Vector3 direction)
     {
-        transform.LookAt(transform.position + direction);
+        transform.LookAt(direction);
 
         GameObject bulletObj = PhotonNetwork.Instantiate(
             bulletPrefab.name,
@@ -61,11 +61,11 @@ public abstract class Gun : Weapon
 
 // 던지기
 // 탄남아있어도 던질수있음
-public void ThrowWeapon(Vector3 throwDirection)
+public void ThrowWeapon()
     {
         if (!photonView.IsMine) return;
 
-        transform.LookAt(transform.position + throwDirection);
+        //transform.LookAt(transform.position + throwDirection);
 
         // ThrownGun 프리팹 네트워크 생성
         GameObject thrownObj = PhotonNetwork.Instantiate(

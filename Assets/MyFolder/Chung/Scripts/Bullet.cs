@@ -3,7 +3,7 @@ using Photon.Pun;
 
 public class Bullet : MonoBehaviourPun
 {
-    [SerializeField] protected float speed = 20f;
+    [SerializeField] protected float speed = 100f;
     protected float damage;
     protected int attackerId;
     protected int teamId;

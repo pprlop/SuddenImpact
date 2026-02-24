@@ -196,6 +196,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
         if (useGun)
         {
+            myEquippedGun.Attack(_aimPos);
         Debug.Log("[PlayerController] Im Start Fire");
         }
 
@@ -215,6 +216,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
         if (!closestGun)
         {
+            photonView.RPC(nameof(TryThrow), RpcTarget.All, closestGun.photonView.ViewID);
             Debug.Log("[PlayerController] Try Throw");
             return;
         }
@@ -352,7 +354,8 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     private void TryThrow()
     {
-
+        Gun mygun = (Gun)myEquippedGun;
+        mygun.ThrowWeapon();
     }
 
     #endregion
