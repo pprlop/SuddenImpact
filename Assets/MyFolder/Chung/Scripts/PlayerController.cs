@@ -27,6 +27,11 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     [SerializeField] private float pickUpDistance = 1f;
     [SerializeField] private float stunDuration = 1.5f;
 
+    [Header("Interaction Settings")]
+    [SerializeField] private float interactRadius = 2.0f;
+    [SerializeField] private LayerMask interactableLayer;
+
+
     [Header("ForDebug")]
     [SerializeField] private float curHp;
     [SerializeField] private Weapon closestGun;
@@ -382,6 +387,24 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     #endregion
 
     #endregion
+
+    public void TryInteract(InputAction.CallbackContext ctx)
+    {
+        // 1. 내 주변 2m 안의 가구/오브젝트 검색
+        Collider[] hits = Physics.OverlapSphere(transform.position, interactRadius, interactableLayer);
+
+        foreach (var hit in hits)
+        {
+            // 2. 인터페이스 추출 시도
+            if (hit.TryGetComponent<IInteractable>(out var target))
+            {
+                // 3. 된다면 실행
+                target.Interact(this);
+                
+                break; // 한 번에 하나만 상호작용
+            }
+        }
+    }
 
     #endregion
 

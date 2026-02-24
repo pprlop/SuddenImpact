@@ -204,6 +204,10 @@ MonoBehaviour:
   rollDuration: 0.2
   pickUpDistance: 1
   stunDuration: 1.5
+  interactRadius: 2
+  interactableLayer:
+    serializedVersion: 2
+    m_Bits: 8192
   curHp: 0
   closestGun: {fileID: 0}
   myEquippedGun: {fileID: 0}
@@ -574,7 +578,7 @@ MonoBehaviour:
   attackOffset: 1
   targetLayer:
     serializedVersion: 2
-    m_Bits: 1048576
+    m_Bits: 1056768
   isDebugMode: 0
 --- !u!4 &5063920808464830962 stripped
 Transform:
