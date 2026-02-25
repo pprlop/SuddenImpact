@@ -44,7 +44,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     public enum PlayerState
     {
-        NotReady, Idel, Sprint, Rolling, Stunned, Dead
+        NotReady, Idle, Sprint, Rolling, Stunned, Dead
     }
     private PlayerState playerState;
     public PlayerState GetPlayerState { get { return playerState; } }
@@ -57,7 +57,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     private void OnEnable()
     {
         curHp = maxHp;
-        SetPlayerState(PlayerState.Idel);
+        SetPlayerState(PlayerState.Idle);
     }
 
     private void OnDisable()
@@ -77,7 +77,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     public void Respawn(Vector3 spawnPos)
     {
         curHp = maxHp;
-        SetPlayerState(PlayerState.Idel);
+        SetPlayerState(PlayerState.Idle);
         transform.position = spawnPos;
         gameObject.SetActive(true);
     }
@@ -161,7 +161,7 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     {
         playerState = PlayerState.Rolling;
         yield return new WaitForSeconds(rollDuration);
-        playerState = PlayerState.Idel;
+        playerState = PlayerState.Idle;
     }
 
     #endregion
@@ -488,14 +488,14 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
             playerState = PlayerState.Stunned;
             stunCallback?.Invoke(false);
             yield return new WaitForSeconds(stunDuration);
-            playerState = PlayerState.Idel;
+            playerState = PlayerState.Idle;
             stunCallback?.Invoke(true);
         }
         else
         {
             playerState = PlayerState.Stunned;
             yield return new WaitForSeconds(stunDuration);
-            playerState = PlayerState.Idel;
+            playerState = PlayerState.Idle;
         }
     }
 
