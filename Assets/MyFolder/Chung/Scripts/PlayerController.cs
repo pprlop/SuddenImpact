@@ -322,9 +322,12 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     [PunRPC]
     public void PickUpItem(int _viewID)
     {
-        if(!photonView.IsMine)
+        if (!photonView.IsMine)
         {
-            closestGun = PhotonView.Find(_viewID).GetComponent<Weapon>();
+            PhotonView targetView = PhotonView.Find(_viewID);
+            
+            if (targetView == null) return;
+            closestGun = targetView.GetComponent<Weapon>();
         }
 
         DropWeapon();
@@ -370,6 +373,9 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     [PunRPC]
     private void TryThrow(int _viewID)
     {
+        // [방어 코드] 내 손에 총이 없거나, 던지라는 총의 ID가 내 손의 총과 다르면 무시
+        if (myEquippedGun == null || myEquippedGun.photonView.ViewID != _viewID) return;
+
         Gun mygun = (Gun)myEquippedGun;
         mygun.ThrowWeapon();
 
