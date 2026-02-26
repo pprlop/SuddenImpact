@@ -38,6 +38,30 @@ public class PlayerRegistry : ScriptableObject
         else teamB.Add(player);
     }
 
+    public bool TryGetPlayerByActorNumber(int _actorNumber, out PlayerController _player)
+    {
+        foreach (PlayerController player in teamA)
+        {
+            if(player.photonView.Owner.ActorNumber == _actorNumber)
+            {
+                _player = player;
+                return true;
+            }
+        }
+
+        foreach (PlayerController player in teamB)
+        {
+            if (player.photonView.Owner.ActorNumber == _actorNumber)
+            {
+                _player = player;
+                return true;
+            }
+        }
+
+        _player = null;
+        return false;
+    }
+
     // 게임 종료 시 반드시 초기화
     public void Clear()
     {

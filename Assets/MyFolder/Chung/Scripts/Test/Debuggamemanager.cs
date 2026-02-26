@@ -1,7 +1,8 @@
+using Photon.Pun;
+using Photon.Realtime;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Photon.Pun;
 using UnityEngine.UI;
 
 /// <summary>
@@ -22,6 +23,9 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
     [Header("스폰 설정")]
     [SerializeField] private Transform[] teamASpawnPoints;
     [SerializeField] private Transform[] teamBSpawnPoints;
+
+    [Header("Flags")]
+    [SerializeField] private Flag[] mapFlags;
 
     [Header("ForDebug")]
     [SerializeField] private int teamAScore = 0;
@@ -44,6 +48,8 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
         playerRegistry.Clear();
     }
 
+    #region 외부 호출
+
     // -----------------------------------------------
     // 외부 호출 - 플레이어 사망 시 PlayerController에서 호출
     // -----------------------------------------------
@@ -52,18 +58,89 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
     {
         if (!PhotonNetwork.IsMasterClient) return; // 마스터 클라이언트만 승패 판단
 
+        // 죽은 플레이어가 적 깃발을 들고 있다면?
+        if (player.HasEnemyFlag)
+        {
+            int droppedFlagIndex = (player.MyTeam == 0) ? 1 : 0; // A팀이 죽었으면 B팀(1) 깃발을 떨어뜨림
+
+            // 모든 클라이언트에게 깃발을 이 위치에 떨어뜨리라고 명령!
+            photonView.RPC(nameof(DropFlagRPC), RpcTarget.All, droppedFlagIndex, player.transform.position);
+        }
+
         CheckRoundEnd();
     }
 
+    [PunRPC]
+    private void DropFlagRPC(int _flagIndex, Vector3 _dropPos)
+    {
+        mapFlags[_flagIndex].DropFlag(_dropPos);
+    }
+
+    #endregion
+
+    #region 라운드 체크
+
     // -----------------------------------------------
     // 라운드 체크
-    // 나중에 깃발 조건 추가 시 여기만 수정
     // -----------------------------------------------
+
+
+    // 상황 A: 빈손으로 적 깃발을 만짐 -> 획득!
+    // 여기서 마스터 클라이언트에게 "나 이거 먹었어!" 라고 RPC를 쏴서 전 세계 동기화
+    public void OnLocalPlayerTouchedFlag(int flagTeam, int flagIndex)
+    {
+        Debug.Log("[DebugGameManager] OnLocalPlayerTouchedFlag Calld");
+
+        // 1. 레지스트리에서 '나'를 찾는다. 
+        int myActorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+
+        if (!playerRegistry.TryGetPlayerByActorNumber(myActorNumber, out PlayerController myPlayer)) return;
+
+        if (myPlayer == null || myPlayer.GetPlayerState == PlayerController.PlayerState.Dead) return;
+
+        if (!myPlayer.HasEnemyFlag && myPlayer.MyTeam != flagTeam)
+        {
+            photonView.RPC(nameof(ProcessFlagPickupRPC), RpcTarget.All, myActorNumber, flagTeam, flagIndex);
+        }
+    }
+
+    // 상황 B: 적 깃발을 들고 우리 팀 깃발(베이스)을 만짐 -> 득점!
+    // 득점 RPC 호출 (섬멸전 때 짰던 OnRoundEndRPC 재활용)
+    public void OnLocalPlayerReachedGoal(int goalTeam)
+    {
+        Debug.Log("[DebugGameManager] OnLocalPlayerReachedGoal Calld");
+
+        int myActorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
+
+        if (!playerRegistry.TryGetPlayerByActorNumber(myActorNumber, out PlayerController myPlayer)) return;
+
+        if (myPlayer == null || myPlayer.GetPlayerState == PlayerController.PlayerState.Dead) return;
+
+        if (myPlayer.HasEnemyFlag && myPlayer.MyTeam == goalTeam)
+        {
+            photonView.RPC(nameof(OnRoundEndRPC), RpcTarget.All, myPlayer.MyTeam);
+        }
+    }
+
+    [PunRPC]
+    private void ProcessFlagPickupRPC(int _myActorNumber, int _flagTeam, int _flagIndex)
+    {
+        if (!playerRegistry.TryGetPlayerByActorNumber(_myActorNumber, out PlayerController myPlayer)) return;
+
+        myPlayer.GetFlag();
+
+        if (_flagIndex >= 0 && _flagIndex < mapFlags.Length)
+        {
+            mapFlags[_flagIndex].HideFlag();
+        }
+    }
 
     private void CheckRoundEnd()
     {
         bool teamAAlive = IsTeamAlive(playerRegistry.TeamA);
         bool teamBAlive = IsTeamAlive(playerRegistry.TeamB);
+
+        Debug.Log($"[GameManager] Team A Alive : {teamAAlive}, Team B Alive : {teamBAlive}");
 
         if (!teamAAlive)
         {
@@ -89,9 +166,9 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
             // 2단계: 유니티 객체로서 유효한지 확인
             if (!player.gameObject) continue;
 
-            // 3단계: 꺼져있는지 확인 
-            // 만약 Active를 끄는 방식이라, activeInHierarchy가 false인 것이 '죽은 상태'를 의미함
-            if (player.gameObject.activeInHierarchy)
+            // 3단계: 사망 확인
+            // 내부 상태 값을 검사
+            if (player.GetPlayerState != PlayerController.PlayerState.Dead)
             {
                 return true; // 한 명이라도 켜져 있으면 팀은 살아있음
             }
@@ -99,6 +176,9 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
         return false;
     }
 
+    #endregion
+
+    #region 라운드 종료
 
     // -----------------------------------------------
     // 라운드 종료
@@ -123,10 +203,23 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
 
     private IEnumerator NextRoundCoroutine()
     {
+        foreach(var player in playerRegistry.TeamA)
+        {
+            player.OnRoundEndReset();
+        }
+        foreach(var player in playerRegistry.TeamB)
+        {
+            player.OnRoundEndReset();
+        }
+
         Debug.Log($"[GameManager] {roundStartDelay}초 후 다음 라운드 시작");
         yield return new WaitForSeconds(roundStartDelay);
         StartRound();
     }
+
+    #endregion
+
+    #region 라운드 시작
 
     // -----------------------------------------------
     // 라운드 시작
@@ -158,6 +251,10 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
         }
     }
 
+    #endregion
+
+    #region 매치 종료
+
     // -----------------------------------------------
     // 매치 종료
     // -----------------------------------------------
@@ -169,4 +266,6 @@ public class DebugGameManager : MonoBehaviourPunCallbacks
 
         // TODO: 결과 화면 UI 호출
     }
+
+    #endregion
 }
