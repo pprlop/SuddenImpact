@@ -12,11 +12,17 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
 
     public StunDelegate StunCallback { set  { stunCallback = value; } }
 
+    public enum PlayerState
+    {
+        NotReady, Idle, Sprint, Rolling, Stunned, Dead
+    }
+
     [SerializeField] private Rigidbody myRigidbody;
     [SerializeField] private PhotonTransformView myTransformView;
     [SerializeField] private Transform weaponAttachPoint;
     [SerializeField] private Weapon myKnife;
     [SerializeField] private PlayerRegistry registry;
+    [SerializeField] private GameObject dummyFlagMesh;
 
     [Header("Parameters")]
     [SerializeField] private float maxHp = 100f;
@@ -37,21 +43,24 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     [SerializeField] private Weapon closestGun;
     [SerializeField] private Weapon myEquippedGun;
     [SerializeField] private bool useGun;
+    [SerializeField] private bool hasEnemyFlag;
     [SerializeField] private int myTeam;
+    [SerializeField] private PlayerState playerState;
 
     private Coroutine curCheakClosestWeaponCoroutine;
     private List<Weapon> nearbyItems = new List<Weapon>();
 
-    public enum PlayerState
-    {
-        NotReady, Idle, Sprint, Rolling, Stunned, Dead
-    }
-    private PlayerState playerState;
+    public int MyTeam {  get { return myTeam; } }
+    public bool HasEnemyFlag { get { return hasEnemyFlag; } }
     public PlayerState GetPlayerState { get { return playerState; } }
 
     private void Awake()
     {
         myKnife.SetOwner(photonView.Owner.ActorNumber, registry.MyTeam);
+        if (photonView.IsMine)
+        {
+            myRigidbody.isKinematic = false;
+        }
     }
 
     private void OnEnable()
@@ -80,12 +89,40 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
         SetPlayerState(PlayerState.Idle);
         transform.position = spawnPos;
         gameObject.SetActive(true);
+        dummyFlagMesh.SetActive(false);
+    }
+
+    // 라운드 종료 시 즉각적인 초기화 및 조작 차단
+    public void OnRoundEndReset()
+    {
+        // 1. 상태를 NotReady로 바꿔서 모든 조작(이동, 사격)을 막음
+        SetPlayerState(PlayerState.NotReady);
+
+        // 2. 깃발 상태 초기화 및 시각적 가짜 깃발 끄기
+        hasEnemyFlag = false;
+        dummyFlagMesh.SetActive(false); 
+
+        // 3. 무기 정리 (선택 사항: 들고 있던 무기를 내려놓거나, 초기 상태로 되돌림)
+        DropWeapon();
+
+        // 4. 구르기나 기절 코루틴이 돌고 있다면 정지
+        StopAllCoroutines();
     }
 
     private void SetPlayerState(PlayerState _state)
     {
         playerState = _state;
     }
+
+    #region 깃발 로직
+
+    public void GetFlag()
+    {
+        hasEnemyFlag = true;
+        dummyFlagMesh.SetActive(true);
+    }
+
+    #endregion
 
     #region 조작 로직
     public void MovePlayer(Vector3 _moveAxis)
@@ -460,10 +497,16 @@ public class PlayerController : MonoBehaviourPun, IAttackReceiver
     private void DiePlayer()
     {
         DropWeapon();
+        playerState = PlayerState.Dead;
         // 게임 메니저의 이벤트 버스 호출 필요
         // 인풋 메니저에게 콜백 필요
         DebugGameManager.Instance?.OnPlayerDied(this);
 
+        if (hasEnemyFlag)
+        {
+            hasEnemyFlag = false;
+            dummyFlagMesh.SetActive(false);
+        }
 
         this.gameObject.SetActive(false);
         

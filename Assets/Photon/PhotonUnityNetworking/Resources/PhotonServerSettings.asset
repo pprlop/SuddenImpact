@@ -52,6 +52,8 @@ MonoBehaviour:
   - RPC_ApplyDamage
   - TryThrow
   - RPC_ToggleDoor
+  - DropFlagRPC
+  - ProcessFlagPickupRPC
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 1
